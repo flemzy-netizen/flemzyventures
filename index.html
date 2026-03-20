@@ -74,25 +74,35 @@
     </div>
 
     <script>
-        const sheetURL = "https://script.google.com/macros/s/AKfycbxQI0JBQD402ljJ4pJR2_w1nk8dN6exaS1pH2naxumafO-GJRB7l0m6Wt2dNxG196V-lg/exec";
+       const sheetURL = "https://script.google.com/macros/s/AKfycbjJ1vHhB60b4BLhiDGq8JjCB7ce78ROmL1cjvBT4czoFCpnPBZF7vsqfUa6l7XCLkm-kA/exec"; 
         let products = [];
 
         async function loadData() {
             try {
                 const response = await fetch(sheetURL);
                 const data = await response.json();
+                
+                // This captures the Date from Column A (index 0)
                 products = data.map((row, index) => ({
-                    name: row[1], category: row[2], price: parseFloat(row[3]),
-                    quantity: parseInt(row[4]), description: row[5]
+                    rowIndex: index + 2, 
+                    date: row[0] ? new Date(row[0]).toLocaleDateString() : 'N/A',
+                    name: row[1],
+                    category: row[2],
+                    price: parseFloat(row[3]),
+                    quantity: parseInt(row[4]),
+                    description: row[5]
                 }));
                 render();
-            } catch (e) { document.getElementById('tableBody').innerHTML = "<tr><td colspan='6'>Error loading data.</td></tr>"; }
+            } catch (e) { 
+                document.getElementById('tableBody').innerHTML = "<tr><td colspan='7'>Error loading data. Check headers!</td></tr>"; 
+            }
         }
 
         async function syncToSheet(payload) {
             const btn = document.getElementById('submitBtn');
             btn.textContent = "Syncing..."; btn.disabled = true;
             await fetch(sheetURL, { method: 'POST', mode: 'no-cors', body: JSON.stringify(payload) });
+            // Wait 2 seconds for Google to finish writing before reloading
             setTimeout(() => { loadData(); btn.textContent = "Sync to Cloud"; btn.disabled = false; }, 2000);
         }
 
@@ -112,9 +122,15 @@
             const search = document.getElementById('searchInput').value.toLowerCase();
             const filtered = products.filter(p => p.name.toLowerCase().includes(search));
             document.getElementById('tableBody').innerHTML = filtered.map(p => `
-                <tr><td>${p.name}</td><td>${p.category}</td><td>GHC${p.price.toFixed(2)}</td>
-                <td class="${p.quantity < 5 ? 'low-stock' : ''}">${p.quantity}</td>
-                <td>GHC${(p.price * p.quantity).toFixed(2)}</td><td>${p.description || '-'}</td></tr>
+                <tr>
+                    <td>${p.date}</td>
+                    <td><b>${p.name}</b></td>
+                    <td>${p.category}</td>
+                    <td>GHC${p.price.toFixed(2)}</td>
+                    <td class="${p.quantity < 5 ? 'low-stock' : ''}">${p.quantity}</td>
+                    <td>GHC${(p.price * p.quantity).toFixed(2)}</td>
+                    <td><button class="btn btn-delete" onclick="alert('Open your Google Sheet to remove Row ${p.rowIndex}')">Del</button></td>
+                </tr>
             `).join('');
             updateStats();
         }
